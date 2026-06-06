@@ -1,0 +1,10 @@
+pandas
+datasets
+huggingface_hub
+python-dotenv
+pyarrow
+fastapi
+uvicorn
+pytest
+google-genai
+streamlit
