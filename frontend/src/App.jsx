@@ -3,7 +3,7 @@ import Navbar from './components/Navbar';
 import FilterPanel from './components/FilterPanel';
 import RecommendationsList from './components/RecommendationsList';
 
-const API_BASE = window.location.origin;
+const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
 
 const LOADER_MESSAGES = [
   "Scanning Zomato database for matches...",

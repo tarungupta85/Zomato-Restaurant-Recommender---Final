@@ -401,3 +401,79 @@ Streamlit Community Cloud is the easiest way to deploy and host the application 
      ```
    * Streamlit automatically loads secrets in TOML format into environment variables, which the `google-genai` client in `prompter.py` will read seamlessly via `os.environ.get("GEMINI_API_KEY")`.
 5. Click **Deploy!** Streamlit will provision the container, install the dependencies from `requirements.txt`, and launch your premium recommender live.
+
+---
+
+## 4. Decoupled Production Deployment (FastAPI on Railway & React on Vercel)
+
+This approach separates your presentation layer from your business logic, hosting your **FastAPI Python backend on Railway** and your **React frontend on Vercel**. 
+
+### Part A: Deploying FastAPI Backend on Railway
+
+Railway is a cloud platform that makes it easy to host backend applications, automatically packaging the Python runtime from your repository.
+
+#### Step 1: Configure Port and Host Binding (Completed)
+Railway dynamically assigns a port to your app using the `PORT` environment variable. The backend's entry point [`src/main.py`](file:///c:/Users/tarun/Desktop/Tarun%20Gupta/NextLeap/Restaurant%20Recommender%20-%20Anti%20Gravity/src/main.py) has been updated to bind to `0.0.0.0` and read the dynamic port:
+```python
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
+    uvicorn.run("src.main:app", host=host, port=port, reload=True)
+```
+
+#### Step 2: Procfile configuration (Completed)
+A [`Procfile`](file:///c:/Users/tarun/Desktop/Tarun%20Gupta/NextLeap/Restaurant%20Recommender%20-%20Anti%20Gravity/Procfile) has been added to the root directory to instruct Railway on the startup command:
+```text
+web: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+```
+
+#### Step 3: Railway Dashboard Deployment
+1. Log in to [Railway.app](https://railway.app/).
+2. Click **New Project** &rarr; **Deploy from GitHub repo**.
+3. Select your repository (`Zomato-Restaurant-Recommender---Final`).
+4. Once selected, click on your service's **Settings** tab.
+5. In the **Variables** section, add your environment secret:
+   * **Key**: `GEMINI_API_KEY`
+   * **Value**: *Your Google AI Studio API Key*
+6. In the **Settings** tab under **Networking**, click **Generate Domain** to get a public endpoint URL (e.g. `https://zomato-backend.up.railway.app`). Keep this URL for the Vercel deployment.
+
+---
+
+### Part B: Deploying React Frontend on Vercel
+
+Vercel is the optimal hosting platform for Vite-compiled React web apps.
+
+#### Step 1: Root Directory Configuration
+Because the React code resides in the `/frontend` subfolder rather than the project root, we configure the Vercel project's **Root Directory** settings to specify `frontend`.
+
+#### Step 2: Build and Environment Variable Setup
+1. Log in to [Vercel](https://vercel.com/).
+2. Click **Add New** &rarr; **Project**.
+3. Import your GitHub repository (`Zomato-Restaurant-Recommender---Final`).
+4. In the configuration dashboard, edit the project settings:
+   * **Root Directory**: Select `frontend` (Click **Edit** next to the path and choose the `frontend` folder).
+   * **Framework Preset**: Vercel will automatically detect **Vite**.
+   * **Build Command**: `npm run build`
+   * **Output Directory**: `dist`
+5. Expand the **Environment Variables** section and define the backend link:
+   * **Name**: `VITE_API_BASE`
+   * **Value**: *Your Railway Backend URL* (e.g. `https://zomato-backend.up.railway.app`)
+6. Click **Deploy**. Vercel will install dependencies, compile the React build, and provide you with a live domain (e.g. `https://zomato-recommender.vercel.app`).
+
+---
+
+### Part C: CORS & Security
+
+To protect backend APIs, FastAPI uses a CORS middleware in [`src/main.py`](file:///c:/Users/tarun/Desktop/Tarun%20Gupta/NextLeap/Restaurant%20Recommender%20-%20Anti%20Gravity/src/main.py):
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Set to ["https://zomato-recommender.vercel.app"] in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+For production deployments, change `allow_origins=["*"]` to your exact Vercel URL to restrict API access to only your frontend.
+
